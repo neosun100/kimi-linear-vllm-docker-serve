@@ -220,20 +220,35 @@ curl -sS http://localhost:8002/v1/chat/completions \
 # 如使用宿主 8000 端口映射，则将 8002 改为 8000
 ```
 
-### 一键脚本（推荐）
-已提供可执行脚本，与你之前的 Kimi 启动保持一致的挂载与端口：
+### 一键脚本（推荐，全自动）
+已提供**全自动化**可执行脚本，无需任何前置操作，一键执行即可：
+
 ```bash
-# 通用切换脚本：传入模型 ID 即可
+# 直接运行，脚本会自动处理所有情况：
+# - 自动检测是否需要 sudo
+# - 自动创建缓存目录
+# - 自动检查镜像，不存在则先尝试 pull，失败则自动构建
+# - 自动停止并删除旧容器
+# - 自动启动新容器
+
 ./scripts/switch_model.sh "QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ"
 
 # 或使用固定示例脚本（内部已指定该模型）
 ./scripts/switch_to_qwen3_vl_235b.sh
 
-# 可选：自定义容器名与宿主端口（默认 CONTAINER=kimi48b-awq, HOST_PORT=8002）
+# 可选：自定义容器名与宿主端口
 CONTAINER=my-llm HOST_PORT=18002 ./scripts/switch_model.sh "QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ"
 ```
 
-脚本细节：
-- 左侧宿主机目录：`$HF_HOME`（默认 `~/.cache/huggingface`）与 `$VLLM_DOWNLOAD_DIR`（默认 `~/vllm_downloads`）可按需调整；右侧容器内路径保持默认即可。
-- 执行前确保：`mkdir -p "$HF_HOME" "$VLLM_DOWNLOAD_DIR"`；脚本已自动创建。
-- 多容器并行：为不同模型设不同 `CONTAINER` 和 `HOST_PORT` 即可并行运行。
+**脚本自动化特性**：
+- ✅ **自动检测 sudo**：如果普通用户无法执行 docker，自动使用 `sudo docker`
+- ✅ **自动镜像管理**：本地不存在时先尝试从 registry pull，失败则自动本地构建（需要 Dockerfile）
+- ✅ **自动目录创建**：自动创建 `$HF_HOME` 和 `$VLLM_DOWNLOAD_DIR` 缓存目录
+- ✅ **自动容器管理**：自动停止并删除同名旧容器，避免冲突
+- ✅ **一致的挂载配置**：与 Kimi 模型完全相同的卷挂载和端口配置
+- ✅ **多容器支持**：通过 `CONTAINER` 和 `HOST_PORT` 环境变量支持同时运行多个模型
+
+**使用提示**：
+- 首次构建镜像可能需要较长时间（下载基础镜像、安装依赖等），请耐心等待
+- 脚本执行成功后会显示容器日志查看和 API 测试命令
+- 所有卷挂载路径与之前的 Kimi 配置完全一致，可复用缓存
