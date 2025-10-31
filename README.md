@@ -133,3 +133,13 @@ make ghcr-push
 - `fla-core` is installed in-image for Kimi-Linear support.
 - Start with 128K for stability; escalate to 1M as resources allow.
 - We avoid explicit `--quantization` so vLLM auto-detects AWQ for this model.
+
+## Model switching
+
+**⚠️ Important**: vLLM loads models at startup. To switch models:
+- **Option 1**: Restart container with new `MODEL` env var
+- **Option 2**: Run multiple containers (one model per container, different ports)
+
+❌ **Not possible**: Changing `model` in curl requests won't auto-download/load new models.
+
+See [docs/MODEL_SWITCHING.md](docs/MODEL_SWITCHING.md) for details.
