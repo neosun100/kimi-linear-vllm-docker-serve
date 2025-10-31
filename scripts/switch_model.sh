@@ -16,12 +16,15 @@ fi
 CONTAINER="${CONTAINER:-kimi48b-awq}"
 HOST_PORT="${HOST_PORT:-8002}"
 
-# ?????????????????????????
-# ?????? / ??? -??? Docker ????? /
-MODEL_TAG="${MODEL//\//-}"
-IMAGE_BASE="${IMAGE_BASE:-neosun100/kimi-linear-vllm}"
-IMAGE="${IMAGE:-${IMAGE_BASE}:${MODEL_TAG}}"
-echo "[INFO] Using image tag: ${IMAGE} (for model: ${MODEL})"
+# 根据模型名自动生成镜像名称（每个模型一个完全独立的镜像名）
+# 将模型名中的 / 和 _ 替换为 -，并转换为小写（Docker 镜像名规范）
+MODEL_SANITIZED="${MODEL//\//-}"
+MODEL_SANITIZED="${MODEL_SANITIZED//_/-}"
+MODEL_SANITIZED="$(echo "${MODEL_SANITIZED}" | tr '[:upper:]' '[:lower:]')"
+# 镜像名完全基于模型名：neosun100/kimi-linear-vllm-<model-name>:latest
+IMAGE_NAME_BASE="${IMAGE_NAME_BASE:-neosun100/kimi-linear-vllm}"
+IMAGE="${IMAGE:-${IMAGE_NAME_BASE}-${MODEL_SANITIZED}:latest}"
+echo "[INFO] Using image: ${IMAGE} (for model: ${MODEL})"
 
 # ??????????????
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -91,11 +94,29 @@ fi
 
 echo "[INFO] Switching container '${CONTAINER}' to model: ${MODEL}"
 
-# ???????????????
-if ${DOCKER_CMD} ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${CONTAINER}$"; then
-  echo "[INFO] Stopping existing container '${CONTAINER}'..."
-  ${DOCKER_CMD} stop "${CONTAINER}" 2>/dev/null || true
-  echo "[INFO] Removing existing container '${CONTAINER}'..."
+# 检查容器是否正在运行，如果运行的是同一个模型，直接跳过
+if ${DOCKER_CMD} ps --format '{{.Names}}' 2>/dev/null | grep -q "^${CONTAINER}$"; then
+  # 获取当前容器的 MODEL 环境变量
+  CURRENT_MODEL="$(${DOCKER_CMD} inspect --format='{{range .Config.Env}}{{println .}}{{end}}' "${CONTAINER}" 2>/dev/null | grep '^MODEL=' | cut -d'=' -f2- || echo '')"
+  
+  if [[ -n "${CURRENT_MODEL}" && "${CURRENT_MODEL}" == "${MODEL}" ]]; then
+    echo "[INFO] Container '${CONTAINER}' is already running with model '${MODEL}'"
+    echo "[INFO] No action needed. Skipping..."
+    echo "[INFO] Container status:"
+    ${DOCKER_CMD} ps --filter "name=${CONTAINER}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+    echo ""
+    echo "[INFO] You can check logs with: ${DOCKER_CMD} logs -f ${CONTAINER}"
+    echo "[INFO] Test API with: curl http://localhost:${HOST_PORT}/v1/models"
+    exit 0
+  else
+    echo "[INFO] Container '${CONTAINER}' is running with different model '${CURRENT_MODEL:-unknown}'"
+    echo "[INFO] Stopping and removing existing container..."
+    ${DOCKER_CMD} stop "${CONTAINER}" 2>/dev/null || true
+    ${DOCKER_CMD} rm "${CONTAINER}" 2>/dev/null || true
+  fi
+elif ${DOCKER_CMD} ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${CONTAINER}$"; then
+  # 容器存在但已停止，直接删除
+  echo "[INFO] Container '${CONTAINER}' exists but is stopped. Removing..."
   ${DOCKER_CMD} rm "${CONTAINER}" 2>/dev/null || true
 fi
 

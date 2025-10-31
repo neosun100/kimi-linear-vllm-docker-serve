@@ -241,18 +241,22 @@ CONTAINER=my-llm HOST_PORT=18002 ./scripts/switch_model.sh "QuantTrio/Qwen3-VL-2
 ```
 
 **脚本自动化特性**：
-- ✅ **自动镜像管理**：每个模型使用独立的镜像标签（如 `neosun100/kimi-linear-vllm:QuantTrio-Qwen3-VL-235B-A22B-Thinking-AWQ`），避免混淆
+- ✅ **智能跳过**：如果容器已运行相同模型，直接跳过，不重复启动
+- ✅ **自动镜像管理**：每个模型使用完全独立的镜像名（如 `neosun100/kimi-linear-vllm-quanttrio-qwen3-vl-235b-a22b-thinking-awq:latest`）
 - ✅ **自动检测 sudo**：如果普通用户无法执行 docker，自动使用 `sudo docker`
 - ✅ **智能镜像构建**：本地不存在时先尝试从 registry pull，失败则自动本地构建（需要 Dockerfile）
 - ✅ **自动目录创建**：自动创建 `$HF_HOME` 和 `$VLLM_DOWNLOAD_DIR` 缓存目录
-- ✅ **自动容器管理**：自动停止并删除同名旧容器，避免冲突
+- ✅ **智能容器管理**：
+  - 如果容器运行相同模型 → 跳过
+  - 如果容器运行不同模型 → 自动停止并删除，然后启动新模型
+  - 如果容器已停止 → 自动删除，然后启动新容器
 - ✅ **一致的挂载配置**：与 Kimi 模型完全相同的卷挂载和端口配置
 - ✅ **多容器支持**：通过 `CONTAINER` 和 `HOST_PORT` 环境变量支持同时运行多个模型
 
-**镜像命名规则**：
-- 模型 `QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ` → 镜像 `neosun100/kimi-linear-vllm:QuantTrio-Qwen3-VL-235B-A22B-Thinking-AWQ`
-- 模型 `cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit` → 镜像 `neosun100/kimi-linear-vllm:cyankiwi-Kimi-Linear-48B-A3B-Instruct-AWQ-4bit`
-- 每个模型拥有独立镜像标签，便于管理和区分
+**镜像命名规则**（镜像名完全基于模型名）：
+- 模型 `QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ` → 镜像 `neosun100/kimi-linear-vllm-quanttrio-qwen3-vl-235b-a22b-thinking-awq:latest`
+- 模型 `cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit` → 镜像 `neosun100/kimi-linear-vllm-cyankiwi-kimi-linear-48b-a3b-instruct-awq-4bit:latest`
+- 每个模型拥有完全独立的镜像名（模型名转小写、斜杠和下划线替换为横杠），便于管理和区分
 
 **使用提示**：
 - 首次构建镜像可能需要较长时间（下载基础镜像、安装依赖等），请耐心等待
