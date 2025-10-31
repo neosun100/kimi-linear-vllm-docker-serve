@@ -1,27 +1,27 @@
-# Kimi-Linear-48B-A3B: vLLM Docker Image Project (English)
+# Kimi-Linear-48B-A3B: vLLM Docker Image Project
 
-This repository is a pure Docker image project for serving the Kimi-Linear-48B-A3B-Instruct (AWQ-4bit) model via vLLM. vLLM is used as a component inside the image; this project focuses on building, running, and publishing the image.
-
-- Other languages: [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md)
+This repository is a self-contained Docker image project for serving the Kimi-Linear-48B-A3B-Instruct (AWQ-4bit) model via vLLM. vLLM is used inside the container as a component, while this project focuses on building, running, and publishing the Docker image itself.
 
 ## Features
 - Based on `vllm/vllm-openai:nightly`
 - Installs `fla-core` for Kimi-Linear compatibility
 - OpenAI-compatible API
-- Environment overrides for `TP`, context length (128K → 1M), GPU memory utilization, and concurrency
-- Makefile for convenient `build/run/push`
+- Easy environment overrides for TP, context length (128K ? 1M), GPU memory utilization, and concurrency
+- Makefile for build/run/push convenience
 
-## Build
+## Build the image
 ```bash
 docker build -t neosun100/kimi-linear-vllm:latest .
 ```
 
-## Run
+## Run the container
 ```bash
+# Host caches for faster cold start
 export HF_HOME="$HOME/.cache/huggingface"
 export VLLM_DOWNLOAD_DIR="$HOME/vllm_downloads"
 mkdir -p "$HF_HOME" "$VLLM_DOWNLOAD_DIR"
 
+# Start
 docker run --gpus all -d --name kimi48b-awq --restart unless-stopped \
   --ipc=host -p 8002:8000 \
   -v "$HF_HOME":/root/.cache/huggingface \
@@ -29,7 +29,7 @@ docker run --gpus all -d --name kimi48b-awq --restart unless-stopped \
   neosun100/kimi-linear-vllm:latest
 ```
 
-## Health check & chat
+## Health check and chat
 ```bash
 curl http://localhost:8002/v1/models
 
@@ -43,10 +43,11 @@ curl http://localhost:8002/v1/chat/completions \
 ```
 
 ## Environment overrides
+You can override these at runtime via `-e KEY=VALUE`:
 - `MODEL` (default: `cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit`)
 - `PORT` (default: `8000`)
 - `TP` (default: `4`)
-- `MAX_LEN` (default: `131072`) → step up to `1048576` for 1M
+- `MAX_LEN` (default: `131072`) ? step up to `1048576` for 1M
 - `GPU_MEM_UTIL` (default: `0.5`)
 - `MAX_NUM_SEQS` (default: `64`)
 - `DOWNLOAD_DIR` (default: `/data/vllm_downloads`)
@@ -60,16 +61,18 @@ docker run --gpus all -d --name kimi48b-awq -p 8002:8000 \
   neosun100/kimi-linear-vllm:latest
 ```
 
-## Push
+## Push to registries
 ### Docker Hub
 ```bash
+# Login first
 # docker login
+
 docker push neosun100/kimi-linear-vllm:latest
 ```
 
 ### GitHub Container Registry (optional)
 ```bash
-# gh auth login (write:packages)
+# gh auth login (with write:packages)
 docker tag neosun100/kimi-linear-vllm:latest ghcr.io/neosun100/kimi-linear-vllm:latest
 docker push ghcr.io/neosun100/kimi-linear-vllm:latest
 ```
@@ -85,6 +88,6 @@ make ghcr-push
 ```
 
 ## Notes
-- `fla-core` is installed in-image for Kimi-Linear support.
-- Start with 128K for stability; escalate to 1M as resources allow.
+- The image installs `fla-core` to support the Kimi-Linear tokenizer/components.
 - We avoid explicit `--quantization` so vLLM auto-detects AWQ for this model.
+- Start with 128K context for stability; then escalate to 1M with caution.
