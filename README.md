@@ -42,6 +42,51 @@ curl http://localhost:8002/v1/chat/completions \
   }'
 ```
 
+### Curl testing cookbook
+- List models (expect JSON with model id):
+```bash
+curl -sS http://localhost:8002/v1/models | jq .
+```
+
+- Non-stream chat (waits for full response):
+```bash
+curl -sS http://localhost:8002/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
+    "messages": [
+      {"role": "user", "content": "Give me a one-sentence fun fact about space."}
+    ],
+    "max_tokens": 128,
+    "stream": false
+  }' | jq .
+```
+
+- Stream chat (tokens stream incrementally):
+```bash
+curl -sN http://localhost:8002/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit",
+    "messages": [
+      {"role": "user", "content": "Write a single witty one-liner."}
+    ],
+    "stream": true
+  }'
+```
+
+### Scripted tests (recommended)
+```bash
+# List models
+HOST=localhost PORT=8002 ./scripts/test_models.sh
+
+# Non-stream chat (Chinese prompt by default)
+HOST=localhost PORT=8002 MAX_TOKENS=128 ./scripts/test_chat.sh
+
+# Stream chat (prints tokens progressively)
+HOST=localhost PORT=8002 ./scripts/test_stream.sh
+```
+
 ## Environment overrides
 - `MODEL` (default: `cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit`)
 - `PORT` (default: `8000`)
