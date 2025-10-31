@@ -219,3 +219,21 @@ curl -sS http://localhost:8002/v1/chat/completions \
 
 # 如使用宿主 8000 端口映射，则将 8002 改为 8000
 ```
+
+### 一键脚本（推荐）
+已提供可执行脚本，与你之前的 Kimi 启动保持一致的挂载与端口：
+```bash
+# 通用切换脚本：传入模型 ID 即可
+./scripts/switch_model.sh "QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ"
+
+# 或使用固定示例脚本（内部已指定该模型）
+./scripts/switch_to_qwen3_vl_235b.sh
+
+# 可选：自定义容器名与宿主端口（默认 CONTAINER=kimi48b-awq, HOST_PORT=8002）
+CONTAINER=my-llm HOST_PORT=18002 ./scripts/switch_model.sh "QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ"
+```
+
+脚本细节：
+- 左侧宿主机目录：`$HF_HOME`（默认 `~/.cache/huggingface`）与 `$VLLM_DOWNLOAD_DIR`（默认 `~/vllm_downloads`）可按需调整；右侧容器内路径保持默认即可。
+- 执行前确保：`mkdir -p "$HF_HOME" "$VLLM_DOWNLOAD_DIR"`；脚本已自动创建。
+- 多容器并行：为不同模型设不同 `CONTAINER` 和 `HOST_PORT` 即可并行运行。
