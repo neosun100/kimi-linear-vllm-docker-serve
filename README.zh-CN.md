@@ -176,3 +176,46 @@ docker run --gpus all -d --name qwen-model --restart unless-stopped \
 - 我能否只改 curl 的 `model` 参数？不行，它主要用于校验/日志，并不会触发模型热切换。
 
 更多说明参见：`docs/MODEL_SWITCHING.md`
+
+### 示例：切换到 QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ
+
+以下示例演示如何停止当前容器，并以新模型 `QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ` 重新启动：
+```bash
+# 1) 停止并删除当前容器
+docker stop kimi48b-awq || true
+docker rm kimi48b-awq || true
+
+# 2) 以新模型重启（注意：根据你的端口映射调整 -p）
+# 如果你按 README 推荐使用宿主 8002 -> 容器 8000：
+docker run --gpus all -d --name kimi48b-awq --restart unless-stopped \
+  --ipc=host -p 8002:8000 \
+  -v "$HF_HOME":/root/.cache/huggingface \
+  -v "$VLLM_DOWNLOAD_DIR":/data/vllm_downloads \
+  -e MODEL="QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ" \
+  neosun100/kimi-linear-vllm:latest
+
+# 如果你要直接用宿主 8000（宿主 8000 未被占用时）：
+# docker run --gpus all -d --name kimi48b-awq --restart unless-stopped \
+#   --ipc=host -p 8000:8000 \
+#   -v "$HF_HOME":/root/.cache/huggingface \
+#   -v "$VLLM_DOWNLOAD_DIR":/data/vllm_downloads \
+#   -e MODEL="QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ" \
+#   neosun100/kimi-linear-vllm:latest
+```
+
+重启后，用 curl 进行验证（根据你的端口选择 8002 或 8000）：
+```bash
+# 宿主 8002 -> 容器 8000（推荐映射）
+curl -sS http://localhost:8002/v1/models | jq . || true
+
+curl -sS http://localhost:8002/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  --data '{
+    "model": "QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ",
+    "messages": [
+      {"role": "user", "content": "What is the capital of France?"}
+    ]
+  }' | jq . || true
+
+# 如使用宿主 8000 端口映射，则将 8002 改为 8000
+```
