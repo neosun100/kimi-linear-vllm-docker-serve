@@ -15,7 +15,13 @@ fi
 # ??
 CONTAINER="${CONTAINER:-kimi48b-awq}"
 HOST_PORT="${HOST_PORT:-8002}"
-IMAGE="${IMAGE:-neosun100/kimi-linear-vllm:latest}"
+
+# ?????????????????????????
+# ?????? / ??? -??? Docker ????? /
+MODEL_TAG="${MODEL//\//-}"
+IMAGE_BASE="${IMAGE_BASE:-neosun100/kimi-linear-vllm}"
+IMAGE="${IMAGE:-${IMAGE_BASE}:${MODEL_TAG}}"
+echo "[INFO] Using image tag: ${IMAGE} (for model: ${MODEL})"
 
 # ??????????????
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -104,9 +110,16 @@ if ${DOCKER_CMD} run --gpus all -d --name "${CONTAINER}" --restart unless-stoppe
   -e MODEL="${MODEL}" \
   "${IMAGE}"; then
   echo "[SUCCESS] Container '${CONTAINER}' started successfully"
+  echo "[INFO] Image used: ${IMAGE} (model-specific tag)"
   echo "[INFO] You can check logs with: ${DOCKER_CMD} logs -f ${CONTAINER}"
   echo "[INFO] Test API with: curl http://localhost:${HOST_PORT}/v1/models"
+  echo ""
+  echo "[NOTE] If you see CUDA OOM errors, check GPU memory:"
+  echo "       nvidia-smi"
+  echo "       You may need to stop other containers or reduce GPU_MEM_UTIL"
 else
   echo "[ERROR] Failed to start container. Check logs above." >&2
+  echo "[INFO] Check container logs: ${DOCKER_CMD} logs ${CONTAINER}" >&2
+  echo "[INFO] If OOM error, try: ${DOCKER_CMD} stop $(docker ps -aq) && ${DOCKER_CMD} run ..." >&2
   exit 1
 fi

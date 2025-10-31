@@ -241,14 +241,30 @@ CONTAINER=my-llm HOST_PORT=18002 ./scripts/switch_model.sh "QuantTrio/Qwen3-VL-2
 ```
 
 **脚本自动化特性**：
+- ✅ **自动镜像管理**：每个模型使用独立的镜像标签（如 `neosun100/kimi-linear-vllm:QuantTrio-Qwen3-VL-235B-A22B-Thinking-AWQ`），避免混淆
 - ✅ **自动检测 sudo**：如果普通用户无法执行 docker，自动使用 `sudo docker`
-- ✅ **自动镜像管理**：本地不存在时先尝试从 registry pull，失败则自动本地构建（需要 Dockerfile）
+- ✅ **智能镜像构建**：本地不存在时先尝试从 registry pull，失败则自动本地构建（需要 Dockerfile）
 - ✅ **自动目录创建**：自动创建 `$HF_HOME` 和 `$VLLM_DOWNLOAD_DIR` 缓存目录
 - ✅ **自动容器管理**：自动停止并删除同名旧容器，避免冲突
 - ✅ **一致的挂载配置**：与 Kimi 模型完全相同的卷挂载和端口配置
 - ✅ **多容器支持**：通过 `CONTAINER` 和 `HOST_PORT` 环境变量支持同时运行多个模型
 
+**镜像命名规则**：
+- 模型 `QuantTrio/Qwen3-VL-235B-A22B-Thinking-AWQ` → 镜像 `neosun100/kimi-linear-vllm:QuantTrio-Qwen3-VL-235B-A22B-Thinking-AWQ`
+- 模型 `cyankiwi/Kimi-Linear-48B-A3B-Instruct-AWQ-4bit` → 镜像 `neosun100/kimi-linear-vllm:cyankiwi-Kimi-Linear-48B-A3B-Instruct-AWQ-4bit`
+- 每个模型拥有独立镜像标签，便于管理和区分
+
 **使用提示**：
 - 首次构建镜像可能需要较长时间（下载基础镜像、安装依赖等），请耐心等待
 - 脚本执行成功后会显示容器日志查看和 API 测试命令
 - 所有卷挂载路径与之前的 Kimi 配置完全一致，可复用缓存
+
+**常见问题 - 显存不足（CUDA OOM）**：
+如果遇到 `CUDA out of memory` 错误：
+1. 检查 GPU 显存占用：`nvidia-smi`
+2. 停止其他占用显存的容器：`docker stop $(docker ps -aq)`（谨慎使用）
+3. 降低 GPU 内存利用率（通过环境变量）：
+   ```bash
+   -e GPU_MEM_UTIL=0.3 -e MAX_NUM_SEQS=32 -e MAX_LEN=65536
+   ```
+4. 减小上下文长度：`-e MAX_LEN=32768`（默认是 131072）
